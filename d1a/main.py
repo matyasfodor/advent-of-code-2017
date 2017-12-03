@@ -1,7 +1,7 @@
 # Yields the matching charactersof the input
 # circular
 import collections
-from itertools import takewhile, islice
+from itertools import takewhile, islice, tee, groupby
 
 
 # Source https://docs.python.org/3/library/itertools.html#itertools-recipes
@@ -29,7 +29,7 @@ def take_equals():
         nonlocal value
         if value is None:
             value = new_value
-        print('##: ', value, new_value)
+        # print('##: ', value, new_value)
         return value == new_value
     return inner
 
@@ -42,6 +42,33 @@ def yield_matching_copyfree(string):
         yield ret
 
 
+def yield_matching_iter2(it):
+    value = next(it)
+    while True:
+        counter = 1
+        while True:
+            new_value = next(it)
+            if new_value == value:
+                counter +=1
+            else:
+                # backward compatibility
+                yield [value for _ in range(counter)]
+                value = new_value
+                continue
+    yield [4]
+
+
+def yield_matching_iter(it):
+    while True:
+        it, copy = tee(it)
+        value = list(takewhile(take_equals(), it))
+        consume(it, len(value))
+        if len(value) > 0:
+            yield value
+        else:
+            break
+
+
 def yield_matching(string):
     return yield_matching_copyfree(string)
     # while len(string):
@@ -49,12 +76,13 @@ def yield_matching(string):
     #     string = string[len(ret):]
     #     yield ret
 
-def aggregate(seq):
-    return seq[0] * (len(seq) - 1)
+def aggregate(k, g):
+    g = list(g)
+    return k * (len(g) -1)
 
 def main(content):
     content = [int(c) for c in content]
-    return sum([aggregate(seq) for seq in yield_matching_copyfree(iter(content))])
+    return sum([aggregate(k, g) for k, g in groupby(round_iterator(iter(content)))])
 
 if __name__ == '__main__':
     with open('input.txt') as fp:
